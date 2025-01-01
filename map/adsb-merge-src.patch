@@ -1,0 +1,76 @@
+diff --git a/html/defaults.js b/html/defaults.js
+index 3ee9300..8614098 100644
+--- a/html/defaults.js
++++ b/html/defaults.js
+@@ -115,6 +115,11 @@ let monochromeTracks = null;
+ 
+ let altitudeChartDefaultState = true;
+ 
++// adsb-merge: HSL adjustment for contacts tagged src=public by the
++// adsb-merge reconciler (mesh gap-fill). Desaturate + lighten = "ghosted";
++// local antenna contacts keep the normal altitude coloring below.
++let ColorBySrcPublic = { s: -55, l: 10 };
++
+ // These settings control the coloring of aircraft by altitude.
+ // All color values are given as Hue (0-359) / Saturation (0-100) / Lightness (0-100)
+ let ColorByAlt = {
+diff --git a/html/planeObject.js b/html/planeObject.js
+index 561cce4..bf3e9f4 100644
+--- a/html/planeObject.js
++++ b/html/planeObject.js
+@@ -737,6 +737,13 @@ PlaneObject.prototype.getMarkerColor = function(options) {
+         l += ColorByAlt.mlat.l;
+     }
+ 
++    // adsb-merge: ghost the public mesh gap-fills so the two datasets read
++    // at a glance — local keeps the full altitude ramp, public washes out.
++    if (this.adsbmSrc == "public") {
++        s += ColorBySrcPublic.s;
++        l += ColorBySrcPublic.l;
++    }
++
+     if (atcStyle && (this.squawk == '7700' || this.squawk == '7600' || this.squawk == '7500')) {
+         h = 0;
+         s = 100;
+@@ -1608,6 +1615,10 @@ PlaneObject.prototype.updateData = function(now, last, data, init) {
+     else
+         this.addrtype = null;
+ 
++    // adsb-merge: provenance tag stamped by the reconciler ("local" antenna
++    // truth vs "public" mesh gap-fill); absent on a raw readsb feed.
++    this.adsbmSrc = data.src != null ? data.src : null;
++
+     // Pick a selected altitude
+     if (data.nav_altitude_fms != null) {
+         this.nav_altitude = data.nav_altitude_fms;
+diff --git a/html/script.js b/html/script.js
+index 56cb0ce..0fd7c8a 100644
+--- a/html/script.js
++++ b/html/script.js
+@@ -3803,7 +3803,7 @@ function refreshSelected() {
+     if (selected.position && SitePosition) {
+         sitedist = ol.sphere.getDistance(SitePosition, selected.position);
+     }
+-    jQuery('#selected_source').updateText(format_data_source(selected.dataSource));
++    jQuery('#selected_source').updateText(format_data_source(selected.dataSource) + (selected.adsbmSrc == 'public' ? ' · mesh' : ''));
+     jQuery('#selected_category').updateText(selected.category ? selected.category : "n/a");
+     jQuery('#selected_category_label').updateText(get_category_label(selected.category));
+     jQuery('#selected_sitedist1').updateText(format_distance_long(sitedist, DisplayUnits));
+@@ -3991,7 +3991,7 @@ function refreshHighlighted() {
+         }
+     }
+ 
+-    jQuery('#highlighted_source').text(format_data_source(highlighted.getDataSource()));
++    jQuery('#highlighted_source').text(format_data_source(highlighted.getDataSource()) + (highlighted.adsbmSrc == 'public' ? ' · mesh' : ''));
+ 
+     if (highlighted.registration !== null) {
+         jQuery('#highlighted_registration').text(highlighted.registration);
+@@ -4241,7 +4241,7 @@ function refreshFeatures() {
+     cols.data_source = {
+         text: 'Source',
+         sort: function () { sortBy('data_source', compareNumeric, function(x) { return x.getDataSourceNumber(); } ); },
+-        value: function(plane) { return format_data_source(plane.getDataSource()); },
++        value: function(plane) { return format_data_source(plane.getDataSource()) + (plane.adsbmSrc == 'public' ? ' · mesh' : ''); },
+         align: 'right' };
+     cols.military = {
+         text: 'Mil.',

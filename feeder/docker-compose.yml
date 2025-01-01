@@ -1,0 +1,40 @@
+# ultrafeeder: readsb decoder + tar1090 + graphs1090 + feeders/MLAT, one RTL-SDR dongle.
+# Copy .env.example to .env and fill it in; `docker compose up -d`.
+# Before first plug-in on a desktop distro, install blacklist-rtl-sdr.conf (see README).
+services:
+  ultrafeeder:
+    image: ghcr.io/sdr-enthusiasts/docker-adsb-ultrafeeder:${ULTRAFEEDER_TAG:-latest}
+    container_name: ultrafeeder
+    hostname: ultrafeeder
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - ${WEB_PORT:-8080}:80     # tar1090 + /graphs1090/ + /data/{aircraft,stats}.json
+      - 30005:30005              # Beast out
+    environment:
+      - TZ=${TZ}
+      - LOG_LEVEL=error
+      - READSB_DEVICE_TYPE=rtlsdr
+      - READSB_RTLSDR_DEVICE=${RTLSDR_SERIAL}
+      # Pick by sweeping (tools/gain-sweep.py): aim for strong-signal % in the 1-5% band at best SNR.
+      - READSB_GAIN=${READSB_GAIN:-autogain}
+      - READSB_LAT=${ADSB_LAT}
+      - READSB_LON=${ADSB_LON}
+      # Height above the WGS84 ELLIPSOID, not MSL: ground (NAVD88) + antenna height - geoid undulation.
+      # Getting this wrong by ~10 m visibly hurts MLAT.
+      - READSB_ALT=${ADSB_ALT}
+      - MLAT_USER=${MLAT_USER}
+      - TAR1090_PAGETITLE=${PAGE_TITLE:-ADS-B}
+      - TAR1090_ENABLE_AC_DB=true
+      - TAR1090_RANGERINGSDISTANCES=${RANGE_RINGS_NM:-5,10,20,50}
+      # One UUID per aggregator; generate each with `uuidgen` and keep them stable.
+      - ULTRAFEEDER_CONFIG=adsb,feed.adsb.fi,30004,beast_reduce_plus_out,uuid=${UUID_ADSBFI};mlat,feed.adsb.fi,31090,uuid=${UUID_ADSBFI};adsb,in.adsb.lol,30004,beast_reduce_plus_out,uuid=${UUID_ADSBLOL};mlat,in.adsb.lol,31090,uuid=${UUID_ADSBLOL};adsb,feed.adsbexchange.com,30004,beast_reduce_plus_out,uuid=${UUID_ADSBX};mlat,feed.adsbexchange.com,31090,uuid=${UUID_ADSBX}
+    tmpfs:
+      - /run:exec,size=256M
+      - /tmp:size=128M
+      - /var/log:size=32M
+    volumes:
+      - ./globe_history:/var/globe_history   # heatmaps + replay chunks (keep across moves)
+      - ./graphs1090:/var/lib/collectd       # graphs1090 RRDs (keep across moves)
+      # live view of the host USB tree so a dongle replug doesn't need a container restart
+      - /dev/bus/usb:/dev/bus/usb

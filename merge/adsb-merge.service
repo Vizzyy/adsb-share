@@ -1,0 +1,36 @@
+# /etc/systemd/system/adsb-merge.service — edit User, paths, location, then:
+#   sudo systemctl daemon-reload && sudo systemctl enable --now adsb-merge
+[Unit]
+Description=ADS-B local+public reconciliation feed (serves merged /data/aircraft.json on :8754)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=USER
+ExecStart=/usr/bin/python3 /home/USER/adsb-merge/adsb_merge.py
+Restart=on-failure
+RestartSec=5
+
+# Receiver location = readsb's READSB_LAT/LON. Also centers the public radius query.
+Environment=ADSB_LAT=0.0
+Environment=ADSB_LON=0.0
+Environment=ADSB_RADIUS_NM=50
+Environment=ADSB_PORT=8754
+# ultrafeeder's readsb JSON (its WEB_PORT)
+Environment=ADSB_LOCAL_URL=http://127.0.0.1:8080/data/aircraft.json
+
+# Merged-feed snapshots (tmpfs) for the merged-sky tar1090 map (../map). Omit both lines if unused.
+Environment=ADSB_SNAPSHOT_DIR=/run/adsb-merge
+RuntimeDirectory=adsb-merge
+
+# Advertise haveReplay so the map shows its replay button; needs ../map/var-globe_history.mount.
+Environment=ADSB_HAVE_REPLAY=1
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+
+[Install]
+WantedBy=multi-user.target
