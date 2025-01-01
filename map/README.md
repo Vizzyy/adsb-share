@@ -10,6 +10,8 @@ A second, host-side [tar1090](https://github.com/wiedehopf/tar1090) instance tha
   overridable in config.js) desaturates them; local contacts keep the stock altitude colors.
 - Info panel, hover box and the table "Source" column append **" · mesh"**.
 
+The patch modifies tar1090, so it is licensed GPL-2.0-or-later like tar1090 itself.
+
 ## Install
 
 Needs `adsb-merge` running with `ADSB_SNAPSHOT_DIR=/run/adsb-merge`.

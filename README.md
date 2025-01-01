@@ -12,3 +12,8 @@ Three small pieces that sit around a single RTL-SDR ADS-B receiver:
   public "mesh" contacts ghosted. Optional replay from readsb's heatmaps.
 
 Each folder has its own README. Tested on Ubuntu 24.04 (amd64) and Raspberry Pi OS (arm64).
+
+## License
+
+MIT (see `LICENSE`), except `map/adsb-merge-src.patch`: it modifies tar1090, so it is licensed like
+tar1090 itself, GPL-2.0-or-later.
